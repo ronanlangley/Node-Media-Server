@@ -62,32 +62,33 @@ class NodeTransSession extends EventEmitter {
     Array.prototype.push.apply(argv, ['-c:a', ac]);
     Array.prototype.push.apply(argv, this.conf.acParam);
     Array.prototype.push.apply(argv, ['-f', 'tee', '-map', '0:a?', '-map', '0:v?', mapStr]);
-    argv = argv.filter((n) => { return n }); //去空
+    argv = argv.filter((n) => { return n }); //åŽ»ç©º
     this.ffmpeg_exec = spawn(this.conf.ffmpeg, argv);
     this.ffmpeg_exec.on('error', (e) => {
       Logger.ffdebug(e);
     });
 
     this.ffmpeg_exec.stdout.on('data', (data) => {
-      Logger.ffdebug(`FF输出：${data}`);
+      Logger.ffdebug(`FFè¾“å‡ºï¼š${data}`);
     });
     
     var fileRegex = /Opening \'(.*\.ts)\'/;
-	  var writingFile = false;
-	  var finishedFile = '';
+    var writeStarting = ''
+    var firstSegment = true;
 
     this.ffmpeg_exec.stderr.on('data', (data) => {
       data = data.toString();
       if (data.includes("Opening '")) {
-        finishedFile = data.match(fileRegex)[1];
-        context.nodeEvent.emit('writeStarted', finishedFile);
-        writingFile = true;
-      } else if (writingFile) {
-        context.nodeEvent.emit('writeComplete', finishedFile);
-        writingFile = false;
-        finishedFile = '';
+        if (!firstSegment) {
+            context.nodeEvent.emit('writeComplete', writeStarting);
+            writeStarting = data.match(fileRegex)[1]
+        } else {
+            context.nodeEvent.emit('writeStarting', writeStarting);
+            writeStarting = data.match(fileRegex)[1]
+            firstSegment = false;
+        }
       }
-      Logger.ffdebug(`FF输出：${data}`);
+      Logger.ffdebug(`FFè¾“å‡ºï¼š${data}`);
     });
 
     this.ffmpeg_exec.on('close', (code) => {
