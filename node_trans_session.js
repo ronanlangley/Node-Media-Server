@@ -5,6 +5,7 @@
 //
 const Logger = require('./node_core_logger');
 
+const context = require("./node_core_ctx");
 const EventEmitter = require('events');
 const { spawn } = require('child_process');
 const dateFormat = require('dateformat');
@@ -70,8 +71,22 @@ class NodeTransSession extends EventEmitter {
     this.ffmpeg_exec.stdout.on('data', (data) => {
       Logger.ffdebug(`FF输出：${data}`);
     });
+    
+    var fileRegex = /Opening \'(.*\.ts)\'/;
+	  var writingFile = false;
+	  var finishedFile = '';
 
     this.ffmpeg_exec.stderr.on('data', (data) => {
+      data = data.toString();
+      if (data.includes("Opening '")) {
+        finishedFile = data.match(fileRegex)[1];
+        context.nodeEvent.emit('writeStarted', finishedFile);
+        writingFile = true;
+      } else if (writingFile) {
+        context.nodeEvent.emit('writeComplete', finishedFile);
+        writingFile = false;
+        finishedFile = '';
+      }
       Logger.ffdebug(`FF输出：${data}`);
     });
 
